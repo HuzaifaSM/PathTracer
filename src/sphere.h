@@ -21,7 +21,7 @@ public:
 
         // find nearest root that lies within [ray_tmin, ray_tmax]
         double root = (h - sqrtd) / a;
-        if (root <= ray_tmax || ray_tmax <= root) {
+        if (root <= ray_tmin || ray_tmax <= root) {
             root = (h + sqrtd) / a;
             if (root <= ray_tmin || ray_tmax <= root)
                 return false;

@@ -5,14 +5,19 @@
 #include "ray.h"
 #include "hittable_list.h"
 #include "sphere.h"
+#include "common.h"
 
 const double infinity = std::numeric_limits<double>::infinity();
 
 // colours a ray based on direction: blends white to sky-blue based on how 'up' the ray points. a = 0 at bottom, 1 at top
-colour ray_colour(const ray& r, const hittable& world) {
+colour ray_colour(const ray& r, int depth, const hittable& world) {
+    if (depth <= 0)
+        return colour(0,0,0);
+
     hit_record rec;
-    if (world.hit(r, 0, infinity, rec)) {
-        return 0.5 * (rec.normal + colour(1, 1, 1));
+    if (world.hit(r, 0.01, infinity, rec)) {
+        vec3 direction = rec.normal + random_unit_vector();
+        return 0.5 * ray_colour(ray(rec.p, direction), depth - 1, world);
     }
 
     vec3 unit_direction = unit_vector(r.direction());
@@ -40,6 +45,10 @@ int main() {
     double viewport_width = viewport_height * (double(image_width) / image_height);
     point3 camera_center = point3(0, 0, 0);
 
+    int samples_per_pixel = 100;
+    double pixel_samples_scale = 1.0 / samples_per_pixel;
+    int max_depth = 50;
+
     // vectors spanning viewport's full width (right) and height (down)
     vec3 viewport_u = vec3(viewport_width, 0, 0);
     vec3 viewport_v = vec3(0, -viewport_height, 0);
@@ -63,12 +72,21 @@ int main() {
     for (int j = 0; j < image_height; ++j) {
         std::clog << "\rScanlines remaining: " << j << ' ' << std::flush;
         for (int i = 0; i < image_width; ++i) {
-            point3 pixel_center = pixel100_loc + (i * pixel_delta_u) + (j * pixel_delta_v);
-            vec3 ray_direction = pixel_center - camera_center;
-            ray r(camera_center, ray_direction);
+            colour pixel_colour(0,0,0);
+            for (int sample = 0; sample < samples_per_pixel; ++sample) {
+                double offset_u = random_double() - 0.5;
+                double offset_v = random_double() - 0.5;
 
-            colour pixel_colour = ray_colour(r, world);
-            write_colour(out, pixel_colour);
+                point3 pixel_sample = pixel100_loc
+                                    + ((i + offset_u) * pixel_delta_u)
+                                    + ((j + offset_v) * pixel_delta_v);
+
+                vec3 ray_direction = pixel_sample - camera_center;
+                ray r(camera_center, ray_direction);
+
+                pixel_colour += ray_colour(r, max_depth, world);
+            }
+            write_colour(out, pixel_samples_scale * pixel_colour);
         }
     }
 

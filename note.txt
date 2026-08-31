@@ -1,0 +1,9 @@
+after editing .cpp or .h file:
+cmake --build build --config Release
+
+adding/removing files or editing CMakeLists.txt:
+first: cmake -B build -S .
+second: above command
+
+to run the .exe:
+./build/Release/pathtracer.exe

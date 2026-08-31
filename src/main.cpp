@@ -3,6 +3,7 @@
 
 #include "vec3.h"
 #include "ray.h"
+#include "material.h"
 #include "hittable_list.h"
 #include "sphere.h"
 #include "common.h"
@@ -16,8 +17,11 @@ colour ray_colour(const ray& r, int depth, const hittable& world) {
 
     hit_record rec;
     if (world.hit(r, 0.01, infinity, rec)) {
-        vec3 direction = rec.normal + random_unit_vector();
-        return 0.5 * ray_colour(ray(rec.p, direction), depth - 1, world);
+        ray scattered;
+        colour attenuation;
+        if (rec.mat->scatter(r, rec, attenuation, scattered))
+            return attenuation * ray_colour(scattered, depth - 1, world);
+        return colour(0,0,0);
     }
 
     vec3 unit_direction = unit_vector(r.direction());
@@ -75,9 +79,12 @@ int main() {
     point3 viewport_upper_left = camera_center - vec3(0, 0, focal_length) - viewport_u / 2 - viewport_v / 2;
     point3 pixel100_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
+    auto material_ground = make_shared<lambertian>(colour(0.8, 0.8, 0.0));
+    auto material_center = make_shared<lambertian>(colour(0.1, 0.2, 0.5));
+
     hittable_list world;
-    world.add(make_shared<sphere>(point3(0, 0, -1), 0.5));
-    world.add(make_shared<sphere>(point3(0, -100.5, -1), 100));
+    world.add(make_shared<sphere>(point3(0, -100.5, -1), 100, material_ground));
+    world.add(make_shared<sphere>(point3(0, 0, -1), 0.5, material_center));
 
     // render
     std::ofstream out("output.ppm");

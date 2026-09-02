@@ -16,7 +16,12 @@ public:
     hittable_list(shared_ptr<hittable> object) { add(object); }
 
     void clear() { objects.clear(); }
-    void add(shared_ptr<hittable> object) { objects.push_back(object); }
+    void add(shared_ptr<hittable> object) {
+        objects.push_back(object);
+        bbox = surrounding_box(bbox, object->bounding_box());
+    }
+
+    aabb bounding_box() const override { return bbox; }
 
     bool hit(const ray& r, double ray_tmin, double ray_tmax, hit_record& rec) const override {
         hit_record temp_rec;
@@ -33,4 +38,7 @@ public:
 
         return hit_anything;
     }
+
+private:
+    aabb bbox;
 };

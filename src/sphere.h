@@ -7,7 +7,13 @@
 class sphere : public hittable {
 public:
     sphere(const point3& center, double radius, std::shared_ptr<material> mat)
-        : center(center), radius(std::fmax(0, radius)), mat(mat) {}
+        : center(center), radius(std::fmax(0, radius)), mat(mat) 
+        {
+            vec3 rvec(radius, radius, radius);
+            bbox = aabb(center - rvec, center + rvec);
+        }
+
+    aabb bounding_box() const override { return bbox; }
 
     bool hit(const ray&r, double ray_tmin, double ray_tmax, hit_record& rec) const override {
         vec3 oc = center - r.origin();
@@ -42,4 +48,5 @@ private:
     point3 center;
     double radius;
     std::shared_ptr<material> mat;
+    aabb bbox;
 };

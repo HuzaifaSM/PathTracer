@@ -5,8 +5,11 @@
 #include "hittable.h"
 #include "material.h"
 
+#include <atomic>
 #include <fstream>
 #include <iostream>
+#include <thread>
+#include <vector>
 
 class camera {
 public:
@@ -25,20 +28,28 @@ public:
     void render(const hittable& world) {
         initialise();
 
+        std::vector<colour> framebuffer(image_width * image_height);
+        std::atomic<int> rows_done{0};
+
+        unsigned int thread_count = std::thread::hardware_concurrency();
+        if (thread_count == 0) thread_count = 4;
+
+        std::vector<std::thread> threads;
+
+        for (unsigned int t = 0; t < thread_count; ++t) {
+            threads.emplace_back([this, t, thread_count, &world, &framebuffer, &rows_done]() {
+                render_rows(t, thread_count, world, framebuffer, rows_done);
+            });
+        }
+
+        for (auto& thread : threads)
+            thread.join();
+
         std::ofstream out("output.ppm");
         out << "P3\n" << image_width << ' ' << image_height << "\n255\n";
 
-        for (int j = 0; j < image_height; ++j) {
-            std::clog << "\rScanlines remaining: " << j << ' ' << std::flush;
-            for (int i = 0; i < image_width; ++i) {
-                colour pixel_colour(0,0,0);
-                for (int sample = 0; sample < samples_per_pixel; ++sample) {
-                    ray r = get_ray(i, j);
-                    pixel_colour += ray_colour(r, max_depth, world);
-                }
-                write_colour(out, pixel_samples_scale * pixel_colour);
-            }
-        }
+        for (const colour& pixel_colour : framebuffer)
+            write_colour(out, pixel_colour);
 
         std::clog << "\rDone.                        \n";
     }
@@ -95,6 +106,22 @@ private:
         vec3 ray_direction = pixel_sample - ray_origin;
 
         return ray(ray_origin, ray_direction);
+    }
+
+    void render_rows(int start_row, int stride, const hittable& world, std::vector<colour>& framebuffer, std::atomic<int>& rows_done) const {
+        for (int j = start_row; j < image_height; j += stride) {
+            for (int i = 0; i < image_width; ++i) {
+                colour pixel_colour(0, 0, 0);
+                for (int sample = 0; sample < samples_per_pixel; ++sample) {
+                    ray r = get_ray(i, j);
+                    pixel_colour += ray_colour(r, max_depth, world);
+                }
+                framebuffer[j * image_width + i] = pixel_samples_scale * pixel_colour;
+            }
+
+            int done = ++rows_done;
+            std::clog << "\rScanlines completed: " << done << " / " << image_height << ' ' << std::flush;
+        }
     }
 
     vec3 sample_square() const {

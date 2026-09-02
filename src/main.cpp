@@ -3,6 +3,7 @@
 #include "hittable_list.h"
 #include "material.h"
 #include "sphere.h"
+#include "bvh.h"
 
 int main() {
     hittable_list world;
@@ -30,7 +31,9 @@ int main() {
     cam.defocus_angle = 10;
     cam.focus_dist = 3.4;
 
-    cam.render(world);
+    bvh_node bvh_world(world);
+
+    cam.render(bvh_world);
 
     return 0;
 }

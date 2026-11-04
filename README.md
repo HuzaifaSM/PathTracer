@@ -86,4 +86,4 @@ If I were to take this further: a scene description file format, additional prim
 
 ## Author
 
-Sheikh Muhammad Huzaifs
+Sheikh Muhammad Huzaifa
